@@ -78,7 +78,7 @@ class SMCManager: ObservableObject {
                 let idStr = String(format: "F%dID", i)
                 let cIdStr = strdup(idStr)
                 var idVal = SMCVal_t()
-                var name = "Fan \\(i)"
+                var name = String(format: "Fan %d", i)
                 if SMCReadKey(cIdStr, &idVal) == kIOReturnSuccess {
                     let nameData = Data(bytes: &idVal.bytes, count: 32).dropFirst(4)
                     let nameStr = String(data: nameData, encoding: .ascii)?.trimmingCharacters(in: .controlCharacters)

@@ -95,7 +95,7 @@ struct FanRowView: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                 Spacer()
-                Text("\\(Int(fan.actualSpeed)) RPM")
+                Text(String(format: "%.0f", fan.actualSpeed) + " RPM")
                     .font(.subheadline.monospacedDigit())
             }
             
@@ -121,11 +121,11 @@ struct FanRowView: View {
             .frame(height: 8)
             
             HStack {
-                Text("Min: \\(Int(fan.minimumSpeed))")
+                Text(String(format: "Min: %.0f", fan.minimumSpeed))
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("Max: \\(Int(fan.maximumSpeed))")
+                Text(String(format: "Max: %.0f", fan.maximumSpeed))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }

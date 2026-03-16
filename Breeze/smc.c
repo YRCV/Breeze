@@ -20,6 +20,7 @@
 #include <IOKit/IOKitLib.h>
 #include <stdio.h>
 #include <string.h>
+#include <libkern/OSByteOrder.h>
 
 #include "smc.h"
 
@@ -221,8 +222,16 @@ float SMCGetFanRPM(char* key)
             if (strcmp(val.dataType, DATATYPE_FPE2) == 0) {
                 // convert fpe2 value to RPM
                 return ntohs(*(UInt16*)val.bytes) / 4.0;
+            } else if (strcmp(val.dataType, "flt ") == 0) {
+                return *(float*)val.bytes;
+            } else {
+                printf("Error: %s expected FPE2, got %s (size %d)\n", key, val.dataType, val.dataSize);
             }
+        } else {
+            printf("Error: %s dataSize is 0\n", key);
         }
+    } else {
+        printf("Error: %s SMCReadKey failed with %08x\n", key, result);
     }
     // read failed
     return -1.f;
@@ -246,6 +255,7 @@ void readAndPrintFanRPMs(void)
             sprintf(key, "F%dID", i);
             result = SMCReadKey(key, &val);
             if (result != kIOReturnSuccess) {
+                printf("Failed to read %s\n", key);
                 continue;
             }
             char* name = val.bytes + 4;
@@ -253,18 +263,21 @@ void readAndPrintFanRPMs(void)
             sprintf(key, "F%dAc", i);
             float actual_speed = SMCGetFanRPM(key);
             if (actual_speed < 0.f) {
+                printf("Failed to read %s (%.2f)\n", key, actual_speed);
                 continue;
             }
 
             sprintf(key, "F%dMn", i);
             float minimum_speed = SMCGetFanRPM(key);
             if (minimum_speed < 0.f) {
+                printf("Failed to read %s (%.2f)\n", key, minimum_speed);
                 continue;
             }
 
             sprintf(key, "F%dMx", i);
             float maximum_speed = SMCGetFanRPM(key);
             if (maximum_speed < 0.f) {
+                printf("Failed to read %s (%.2f)\n", key, maximum_speed);
                 continue;
             }
 
