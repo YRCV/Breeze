@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var smcManager = SMCManager()
+    @StateObject private var smcManager = SMCManager.shared
     
     var body: some View {
         VStack(spacing: 20) {

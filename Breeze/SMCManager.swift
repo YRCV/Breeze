@@ -16,15 +16,19 @@ struct FanData: Identifiable {
 }
 
 class SMCManager: ObservableObject {
+    static let shared = SMCManager()
+    
     @Published var cpuTemperature: Double = 0.0
     @Published var gpuTemperature: Double = 0.0
     @Published var fans: [FanData] = []
     
     private var timer: AnyCancellable?
+    private var isOpened = false
     
-    init() {
+    private init() {
         let openResult = SMCOpen()
         if openResult == kIOReturnSuccess {
+            self.isOpened = true
             print("Successfully opened SMC.")
             self.refresh()
             self.timer = Timer.publish(every: 2.0, on: .main, in: .common)
@@ -39,11 +43,14 @@ class SMCManager: ObservableObject {
     
     deinit {
         timer?.cancel()
-        SMCClose()
-        print("SMC Connection closed.")
+        if isOpened {
+            SMCClose()
+            print("SMC Connection closed.")
+        }
     }
     
     func refresh() {
+        guard isOpened else { return }
         self.cpuTemperature = readTemp(key: SMC_KEY_CPU_TEMP)
         self.gpuTemperature = readTemp(key: SMC_KEY_GPU_TEMP)
         
@@ -55,11 +62,19 @@ class SMCManager: ObservableObject {
         free(fnumStr)
         
         if result == kIOReturnSuccess {
-            // The FNum data is in the first byte
-            let numFans = Int(val.bytes.0)
+            let numFansStr = withUnsafeBytes(of: val.bytes) { rawBuffer in
+                let buff = rawBuffer.bindMemory(to: CChar.self)
+                return String(cString: buff.baseAddress!)
+            }
+            
+            let numFans: Int
+            if let parsed = Int(numFansStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                numFans = parsed
+            } else {
+                numFans = Int(val.bytes.0)
+            }
             
             for i in 0..<numFans {
-                // Name (ID)
                 let idStr = String(format: "F%dID", i)
                 let cIdStr = strdup(idStr)
                 var idVal = SMCVal_t()
@@ -97,7 +112,6 @@ class SMCManager: ObservableObject {
         }
     }
     
-    // Helper port of our C methods to read temperature floats easily
     private func readTemp(key: String) -> Double {
         let cString = strdup(key)
         let temp = SMCGetTemperature(cString)
