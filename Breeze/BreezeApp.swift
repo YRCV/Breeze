@@ -13,5 +13,12 @@ struct BreezeApp: App {
         WindowGroup {
             ContentView()
         }
+        .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
+        
+        MenuBarExtra("Breeze", systemImage: "wind") {
+            ContentView()
+        }
+        .menuBarExtraStyle(.window)
     }
 }

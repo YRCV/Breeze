@@ -4,13 +4,19 @@ import IOKit
 print("Initializing SMC connection from Swift...")
 let result = SMCOpen()
 
+func readTemp(key: String) -> Double {
+    let cString = strdup(key)
+    let temp = SMCGetTemperature(cString)
+    free(cString)
+    return temp
+}
+
 if result == kIOReturnSuccess {
-    let cpuTempStr = strdup(SMC_KEY_CPU_TEMP)
-    let temp = SMCGetTemperature(cpuTempStr)
-    free(cpuTempStr)
-    
-    let tempStr = String(format: "%.1f", temp)
-    print("CPU Temperature: " + tempStr + " °C")
+    let cpuTemp = readTemp(key: SMC_KEY_CPU_TEMP)
+    let gpuTemp = readTemp(key: SMC_KEY_GPU_TEMP)
+
+    print(String(format: "CPU Temperature: %.1f °C", cpuTemp))
+    print(String(format: "GPU Temperature: %.1f °C", gpuTemp))
     
     print("\nReading Fans:")
     readAndPrintFanRPMs()

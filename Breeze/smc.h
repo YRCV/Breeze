@@ -93,7 +93,8 @@ typedef struct {
 // prototypes
 double SMCGetTemperature(char* key);
 kern_return_t SMCSetFanRpm(char* key, int rpm);
-int SMCGetFanRpm(char* key);
+float SMCGetFanRPM(char* key);
+kern_return_t SMCReadKey(UInt32Char_t key, SMCVal_t* val);
 kern_return_t SMCOpen(void);
 kern_return_t SMCClose(void);
 void readAndPrintFanRPMs(void);
