@@ -1,16 +1,59 @@
 import SwiftUI
 import Charts
 
+enum ThemeColor: String, CaseIterable, Identifiable {
+    case blue, yellow, green, orange, purple, red
+    var id: String { self.rawValue }
+    
+    var color: Color {
+        switch self {
+        case .blue: return .blue
+        case .yellow: return .yellow
+        case .green: return .green
+        case .orange: return .orange
+        case .purple: return .purple
+        case .red: return .red
+        }
+    }
+}
+
 struct ContentView: View {
     @StateObject private var smcManager = SMCManager.shared
+    @State private var showingSettings = false
+    @AppStorage("themeColor") private var themeColor: ThemeColor = .blue
     
     var body: some View {
         VStack(spacing: 20) {
-            HeaderView()
+            HeaderView(showingSettings: $showingSettings, themeColor: themeColor.color)
             
+            if showingSettings {
+                SettingsView(showingSettings: $showingSettings)
+                    .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                          removal: .move(edge: .trailing).combined(with: .opacity)))
+            } else {
+                DashboardView(smcManager: smcManager, themeColor: themeColor.color)
+                    .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity),
+                                          removal: .move(edge: .leading).combined(with: .opacity)))
+            }
+        }
+        .padding()
+        .frame(width: 380, height: 450) // Fixed size for consistency
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showingSettings)
+        // Modern glassmorphic background
+        .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
+    }
+}
+
+// MARK: - Dashboard View
+struct DashboardView: View {
+    @ObservedObject var smcManager: SMCManager
+    let themeColor: Color
+    
+    var body: some View {
+        VStack(spacing: 20) {
             HStack(spacing: 20) {
-                TemperatureCard(title: "CPU", temperature: smcManager.cpuTemperature, history: smcManager.cpuHistory, icon: "cpu")
-                TemperatureCard(title: "GPU", temperature: smcManager.gpuTemperature, history: smcManager.gpuHistory, icon: "display")
+                TemperatureCard(title: "CPU", temperature: smcManager.cpuTemperature, history: smcManager.cpuHistory, icon: "cpu", themeColor: themeColor)
+                TemperatureCard(title: "GPU", temperature: smcManager.gpuTemperature, history: smcManager.gpuHistory, icon: "display", themeColor: themeColor)
             }
             
             VStack(spacing: 16) {
@@ -25,32 +68,102 @@ struct ContentView: View {
                         .padding()
                 } else {
                     ForEach(smcManager.fans) { fan in
-                        FanRowView(fan: fan)
+                        FanRowView(fan: fan, themeColor: themeColor)
                     }
                 }
             }
             .padding(.vertical)
             .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
             .cornerRadius(12)
+            
+            Spacer(minLength: 0)
         }
-        .padding()
-        .frame(width: 380) // Slightly wider for better charts
-        // Modern glassmorphic background
-        .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
+    }
+}
+
+// MARK: - Settings View
+struct SettingsView: View {
+    @Binding var showingSettings: Bool
+    @AppStorage("refreshInterval") private var refreshInterval = 2.0
+    @AppStorage("themeColor") private var themeColor: ThemeColor = .blue
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Form {
+                Section(header: Text("General").font(.headline)) {
+                    VStack(alignment: .leading) {
+                        Text("Refresh Interval: \(String(format: "%.1f", refreshInterval))s")
+                        Slider(value: $refreshInterval, in: 1.0...10.0, step: 0.5)
+                    }
+                    .padding(.vertical, 5)
+                    
+                    Picker("Theme Color", selection: $themeColor) {
+                        ForEach(ThemeColor.allCases) { colorOption in
+                            HStack {
+                                Circle()
+                                    .fill(colorOption.color)
+                                    .frame(width: 12, height: 12)
+                                Text(colorOption.rawValue.capitalized)
+                            }
+                            .tag(colorOption)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+                
+                Section(header: Text("About").font(.headline)) {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text("1.0.0")
+                            .foregroundColor(.secondary)
+                    }
+                    Text("Breeze is a lightweight SMC monitoring tool for macOS.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden) // Makes it translucent
+            
+            Spacer(minLength: 10)
+            
+            Button("Done") {
+                showingSettings = false
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.regular)
+            .padding(.bottom, 5)
+            .tint(themeColor.color)
+        }
     }
 }
 
 // MARK: - Subviews
 
 struct HeaderView: View {
+    @Binding var showingSettings: Bool
+    let themeColor: Color
+    
     var body: some View {
         HStack {
             Image(systemName: "wind")
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.blue)
+                .foregroundColor(themeColor)
             Text("Breeze")
                 .font(.system(size: 24, weight: .bold, design: .rounded))
+            
             Spacer()
+            
+            if !showingSettings {
+                Button(action: { showingSettings = true }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
+            }
         }
         .padding(.bottom, 5)
     }
@@ -61,6 +174,7 @@ struct TemperatureCard: View {
     let temperature: Double
     let history: [Double]
     let icon: String
+    let themeColor: Color
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -86,14 +200,14 @@ struct TemperatureCard: View {
                         x: .value("Time", index),
                         y: .value("Temp", value)
                     )
-                    .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing))
+                    .foregroundStyle(themeColor)
                     .interpolationMethod(.catmullRom)
                     
                     AreaMark(
                         x: .value("Time", index),
                         y: .value("Temp", value)
                     )
-                    .foregroundStyle(LinearGradient(colors: [.blue.opacity(0.2), .purple.opacity(0.0)], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(themeColor.opacity(0.1))
                     .interpolationMethod(.catmullRom)
                 }
             }
@@ -111,6 +225,7 @@ struct TemperatureCard: View {
 
 struct FanRowView: View {
     let fan: FanData
+    let themeColor: Color
     
     var body: some View {
         VStack(spacing: 8) {
@@ -130,13 +245,7 @@ struct FanRowView: View {
                         .frame(height: 8)
                     
                     Capsule()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.blue, .purple]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .fill(themeColor)
                         .frame(width: geometry.size.width * CGFloat(fan.percentage / 100), height: 8)
                         // Add a slight animation when the percentage changes
                         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: fan.percentage)
