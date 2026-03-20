@@ -281,14 +281,13 @@ void readAndPrintFanRPMs(void)
                 continue;
             }
 
-            float rpm = actual_speed - minimum_speed;
-            if (rpm < 0.f) {
-                rpm = 0.f;
-            }
-            float pct = rpm / (maximum_speed - minimum_speed);
+            float pct = (actual_speed - minimum_speed) / (maximum_speed - minimum_speed);
 
             pct *= 100.f;
-            printf("Fan %d - %s at %.0f RPM (%.0f%%)\n", i, name, rpm, pct);
+            if (pct < 0.f) pct = 0.f;
+            if (pct > 100.f) pct = 100.f;
+
+            printf("Fan %d - %s at %.0f RPM (%.0f%%)\n", i, name, actual_speed, pct);
 
             //sprintf(key, "F%dSf", i);
             //SMCReadKey(key, &val);
