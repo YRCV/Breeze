@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct ContentView: View {
     @StateObject private var smcManager = SMCManager.shared
@@ -8,8 +9,8 @@ struct ContentView: View {
             HeaderView()
             
             HStack(spacing: 20) {
-                TemperatureCard(title: "CPU", temperature: smcManager.cpuTemperature, icon: "cpu")
-                TemperatureCard(title: "GPU", temperature: smcManager.gpuTemperature, icon: "display")
+                TemperatureCard(title: "CPU", temperature: smcManager.cpuTemperature, history: smcManager.cpuHistory, icon: "cpu")
+                TemperatureCard(title: "GPU", temperature: smcManager.gpuTemperature, history: smcManager.gpuHistory, icon: "display")
             }
             
             VStack(spacing: 16) {
@@ -33,7 +34,7 @@ struct ContentView: View {
             .cornerRadius(12)
         }
         .padding()
-        .frame(width: 350)
+        .frame(width: 380) // Slightly wider for better charts
         // Modern glassmorphic background
         .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow))
     }
@@ -58,6 +59,7 @@ struct HeaderView: View {
 struct TemperatureCard: View {
     let title: String
     let temperature: Double
+    let history: [Double]
     let icon: String
     
     var body: some View {
@@ -77,6 +79,28 @@ struct TemperatureCard: View {
                     .font(.headline)
                     .foregroundColor(.secondary)
             }
+            
+            Chart {
+                ForEach(Array(history.enumerated()), id: \.offset) { index, value in
+                    LineMark(
+                        x: .value("Time", index),
+                        y: .value("Temp", value)
+                    )
+                    .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing))
+                    .interpolationMethod(.catmullRom)
+                    
+                    AreaMark(
+                        x: .value("Time", index),
+                        y: .value("Temp", value)
+                    )
+                    .foregroundStyle(LinearGradient(colors: [.blue.opacity(0.2), .purple.opacity(0.0)], startPoint: .top, endPoint: .bottom))
+                    .interpolationMethod(.catmullRom)
+                }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .chartYScale(domain: 30...100) // Realistic temperature range for MBP
+            .frame(height: 40)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()

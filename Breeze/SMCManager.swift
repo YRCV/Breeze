@@ -20,8 +20,11 @@ class SMCManager: ObservableObject {
     
     @Published var cpuTemperature: Double = 0.0
     @Published var gpuTemperature: Double = 0.0
+    @Published var cpuHistory: [Double] = []
+    @Published var gpuHistory: [Double] = []
     @Published var fans: [FanData] = []
     
+    private let maxHistory = 30
     private var timer: AnyCancellable?
     private var isOpened = false
     
@@ -53,6 +56,15 @@ class SMCManager: ObservableObject {
         guard isOpened else { return }
         self.cpuTemperature = readTemp(key: SMC_KEY_CPU_TEMP)
         self.gpuTemperature = readTemp(key: SMC_KEY_GPU_TEMP)
+        
+        // Update history
+        DispatchQueue.main.async {
+            self.cpuHistory.append(self.cpuTemperature)
+            if self.cpuHistory.count > self.maxHistory { self.cpuHistory.removeFirst() }
+            
+            self.gpuHistory.append(self.gpuTemperature)
+            if self.gpuHistory.count > self.maxHistory { self.gpuHistory.removeFirst() }
+        }
         
         var newFans: [FanData] = []
         var val = SMCVal_t()
@@ -108,7 +120,9 @@ class SMCManager: ObservableObject {
                     newFans.append(fanData)
                 }
             }
-            self.fans = newFans
+            DispatchQueue.main.async {
+                self.fans = newFans
+            }
         }
     }
     
